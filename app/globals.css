@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  /* Overlapping hero video — extra room on mobile for the card between sections */
+  --hero-video-bottom-gap: clamp(3.5rem, 16vw, 5rem);
+  --hero-video-max-width: 960px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --hero-video-bottom-gap: clamp(2.5rem, 8vw, 5rem);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  :root {
+    --hero-video-max-width: 720px;
+    --hero-video-bottom-gap: clamp(3rem, 5vw, 4rem);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-inter: var(--font-inter);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+html {
+  overflow-x: clip;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+  overflow-x: clip;
+}
