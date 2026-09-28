@@ -54,6 +54,7 @@ const dropdownLinks = {
     { href: "/community#magazine", label: "Magazine" },
     { href: "/community#store", label: "Store" },
     { href: "/events#storytree-connect", label: "Community Connect" },
+    { href: "/membership", label: "Ubuntu Pass" },
     { href: "/join", label: "Join The Chat" },
   ],
 } as const;
