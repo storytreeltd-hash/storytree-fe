@@ -79,6 +79,7 @@ export function MembershipCheckout() {
   const [loadingTiers, setLoadingTiers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [hasActiveMembership, setHasActiveMembership] = useState(false);
 
   useEffect(() => {
     const stored = getStoredUser();
@@ -104,12 +105,18 @@ export function MembershipCheckout() {
         setError("Your session isn't valid anymore. Enter your email to start again.");
       });
 
+    const wantsToChange =
+      new URLSearchParams(window.location.search).get("change") === "1";
+
     getMyMembership()
       .then((m) => {
         if (cancelled) return;
-        if (m.status === "active") {
+        if (m.status !== "active") return;
+        if (!wantsToChange) {
           router.replace("/membership/thank-you");
+          return;
         }
+        setHasActiveMembership(true);
       })
       .catch((err) => {
         if (cancelled || !(err instanceof ApiError)) return;
@@ -179,6 +186,13 @@ export function MembershipCheckout() {
         phone: phone.trim() || undefined,
       });
       setUser(session.user);
+
+      const existing = await getMyMembership().catch(() => null);
+      if (existing && existing.status === "active") {
+        router.replace("/membership/thank-you");
+        return;
+      }
+
       setStep("plan");
     } catch (err) {
       setError(
@@ -319,13 +333,32 @@ export function MembershipCheckout() {
                   Signed in as{" "}
                   <span className="font-medium">{user?.email ?? email}</span>
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setStep("account")}
-                  className="text-sm font-medium text-[#171717]/70 underline-offset-2 hover:underline"
-                >
-                  Change
-                </button>
+                <div className="flex items-center gap-4">
+                  {hasActiveMembership ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/membership/thank-you")}
+                      className="text-sm font-medium text-[#171717]/70 underline-offset-2 hover:underline"
+                    >
+                      Back to your account
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearSession();
+                      setUser(null);
+                      setEmail("");
+                      setName("");
+                      setPhone("");
+                      setHasActiveMembership(false);
+                      setStep("account");
+                    }}
+                    className="text-sm font-medium text-[#171717]/70 underline-offset-2 hover:underline"
+                  >
+                    Change
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">

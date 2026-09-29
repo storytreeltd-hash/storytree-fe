@@ -27,6 +27,7 @@ const POLL_MS = 2000;
 const MAX_MS = 60_000;
 
 type Phase =
+  | "checking"
   | "waiting-payment"
   | "provisioning"
   | "ready"
@@ -65,7 +66,7 @@ export function MembershipThankYou() {
   const [community, setCommunity] = useState<CommunityStatus | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
   const [paymentProblem, setPaymentProblem] = useState("");
-  const [phase, setPhase] = useState<Phase>("provisioning");
+  const [phase, setPhase] = useState<Phase>("checking");
   const [error, setError] = useState("");
   const [cancellingRenew, setCancellingRenew] = useState(false);
 
@@ -84,6 +85,7 @@ export function MembershipThankYou() {
 
     let cancelled = false;
     let paymentSettled = !hasPayment;
+    let firstProvisioningTick = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     if (hasPayment) setPhase("waiting-payment");
@@ -158,6 +160,11 @@ export function MembershipThankYou() {
         return;
       }
 
+      if (firstProvisioningTick) {
+        firstProvisioningTick = false;
+        setPhase("provisioning");
+      }
+
       if (elapsed >= MAX_MS) {
         const allStill404 =
           !walletResult.ok &&
@@ -211,7 +218,11 @@ export function MembershipThankYou() {
     }
   }
 
-  if (phase === "waiting-payment" || phase === "provisioning") {
+  if (
+    phase === "checking" ||
+    phase === "waiting-payment" ||
+    phase === "provisioning"
+  ) {
     return (
       <ProvisioningView
         phase={phase}
@@ -245,7 +256,7 @@ export function MembershipThankYou() {
                 ? "Start again from membership checkout to continue."
                 : phase === "error"
                   ? "Some parts of your account are still catching up. Refresh in a minute — everything is saved."
-                  : "Your wallet, community access, and Ubuntu Pass are ready."}
+                  : "Your wallet and Ubuntu Pass are ready. We've emailed your community invite — check your inbox to accept."}
           </p>
 
           {error ? (
@@ -313,28 +324,25 @@ export function MembershipThankYou() {
               title="Community"
               body={
                 community
-                  ? `${community.status}${
-                      community.circle_member_id
-                        ? ` · ${community.circle_member_id}`
-                        : ""
-                    }`
-                  : "Still finishing in the background"
+                  ? `${community.status} · invite sent to your email`
+                  : "Sending invite to your email"
               }
             />
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <p className="mt-6 text-sm text-[#171717]/70">
+            The community invite lands in your email — open it to accept and
+            join the chat.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href="/membership"
+              href={
+                phase === "ready" ? "/membership?change=1" : "/membership"
+              }
               className="rounded-[6px] border border-[#171717]/20 bg-white px-5 py-2.5 text-sm font-medium text-[#171717]"
             >
-              Back to plans
-            </Link>
-            <Link
-              href="/join"
-              className="rounded-[6px] border border-[#E2B45F] bg-[#171717] px-5 py-2.5 text-sm font-medium text-white"
-            >
-              Join the chat
+              {phase === "ready" ? "Change plan" : "Back to plans"}
             </Link>
           </div>
         </FadeIn>
@@ -349,11 +357,23 @@ function ProvisioningView({
   communityReady,
   passReady,
 }: {
-  phase: "waiting-payment" | "provisioning";
+  phase: "checking" | "waiting-payment" | "provisioning";
   walletReady: boolean;
   communityReady: boolean;
   passReady: boolean;
 }) {
+  const title =
+    phase === "waiting-payment"
+      ? "Confirming your payment…"
+      : phase === "provisioning"
+        ? "Setting up your account…"
+        : "Loading your account…";
+  const subtitle =
+    phase === "waiting-payment"
+      ? "Waiting on the payment confirmation from Flutterwave. This usually takes just a few seconds."
+      : phase === "provisioning"
+        ? "This takes a few seconds — creating your wallet, community access, and Ubuntu Pass."
+        : "One moment while we pull up your details.";
   return (
     <section className="font-inter flex min-h-screen items-start px-0 pb-16 pt-24 sm:pt-28 md:pb-20">
       <div className="mx-auto w-full max-w-[560px] px-4 md:px-6 lg:px-8">
@@ -364,27 +384,29 @@ function ProvisioningView({
               Ubuntu Pass
             </p>
             <h1 className="mt-2 text-[24px] font-bold leading-tight text-[#171717] sm:text-[32px]">
-              {phase === "waiting-payment"
-                ? "Confirming your payment…"
-                : "Setting up your account…"}
+              {title}
             </h1>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-[#171717]/70 sm:text-base">
-              {phase === "waiting-payment"
-                ? "Waiting on the payment confirmation from Flutterwave. This usually takes just a few seconds."
-                : "This takes a few seconds — creating your wallet, community access, and Ubuntu Pass."}
+              {subtitle}
             </p>
           </div>
 
           {phase === "provisioning" ? (
             <ul className="mt-8 space-y-3">
-              <ChecklistItem ready={walletReady} label="Creating your wallet" />
+              <ChecklistItem
+                ready={walletReady}
+                pending="Creating your wallet…"
+                done="Creating your wallet — done"
+              />
               <ChecklistItem
                 ready={communityReady}
-                label="Joining the community"
+                pending="Sending your community invite…"
+                done="Community invite sent — check your email"
               />
               <ChecklistItem
                 ready={passReady}
-                label="Minting your Ubuntu Pass"
+                pending="Minting your Ubuntu Pass…"
+                done="Minting your Ubuntu Pass — done"
               />
             </ul>
           ) : null}
@@ -394,7 +416,15 @@ function ProvisioningView({
   );
 }
 
-function ChecklistItem({ ready, label }: { ready: boolean; label: string }) {
+function ChecklistItem({
+  ready,
+  pending,
+  done,
+}: {
+  ready: boolean;
+  pending: string;
+  done: string;
+}) {
   return (
     <li
       className={`flex items-center gap-3 rounded-[10px] border px-4 py-3 transition-colors ${
@@ -409,7 +439,7 @@ function ChecklistItem({ ready, label }: { ready: boolean; label: string }) {
       <span
         className={`text-sm ${ready ? "text-[#171717]" : "text-[#171717]/70"}`}
       >
-        {ready ? `${label} — done` : `${label}…`}
+        {ready ? done : pending}
       </span>
     </li>
   );
