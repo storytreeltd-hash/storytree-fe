@@ -37,12 +37,12 @@ export function SiteAnalytics() {
 
     lastTrackedPath.current = pathname;
 
-    void fetch("/api/analytics/track", {
+    fetch("/api/analytics/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ path: pathname }),
-    });
+    }).catch(() => {});
 
     void logFirebasePageView(pathname);
   }, [pathname]);
@@ -53,10 +53,10 @@ export function SiteAnalytics() {
     }
 
     const heartbeat = window.setInterval(() => {
-      void fetch("/api/analytics/heartbeat", {
+      fetch("/api/analytics/heartbeat", {
         method: "POST",
         credentials: "include",
-      });
+      }).catch(() => {});
     }, HEARTBEAT_MS);
 
     function endSession() {
@@ -65,11 +65,11 @@ export function SiteAnalytics() {
         return;
       }
 
-      void fetch("/api/analytics/end", {
+      fetch("/api/analytics/end", {
         method: "POST",
         credentials: "include",
         keepalive: true,
-      });
+      }).catch(() => {});
     }
 
     function handleVisibilityChange() {

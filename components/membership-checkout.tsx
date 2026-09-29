@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api/client";
 import {
   createSession,
   getCurrentUser,
+  getMyMembership,
   initializePayment,
   listMembershipTiers,
   selectMembership,
@@ -95,16 +96,34 @@ export function MembershipCheckout() {
         if (!cancelled) setUser(current);
       })
       .catch((err) => {
-        if (cancelled || !(err instanceof ApiError) || err.status !== 401) return;
+        if (cancelled || !(err instanceof ApiError)) return;
+        if (err.status !== 401 && err.status !== 403 && err.status !== 404) return;
         clearSession();
         setUser(null);
         setStep("account");
-        setError("Your session expired. Enter your email to continue.");
+        setError("Your session isn't valid anymore. Enter your email to start again.");
       });
+
+    getMyMembership()
+      .then((m) => {
+        if (cancelled) return;
+        if (m.status === "active") {
+          router.replace("/membership/thank-you");
+        }
+      })
+      .catch((err) => {
+        if (cancelled || !(err instanceof ApiError)) return;
+        if (err.status !== 401 && err.status !== 403) return;
+        clearSession();
+        setUser(null);
+        setStep("account");
+        setError("Your session isn't valid anymore. Enter your email to start again.");
+      });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
