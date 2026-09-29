@@ -50,7 +50,12 @@ export async function apiFetch<T>(
     }
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`, {
+  const baseUrl = getApiBaseUrl();
+  if (/\.ngrok(-free)?\.(app|dev|io)$/.test(new URL(baseUrl).hostname)) {
+    headers.set("ngrok-skip-browser-warning", "true");
+  }
+
+  const response = await fetch(`${baseUrl}${path.startsWith("/") ? path : `/${path}`}`, {
     ...init,
     headers,
   });
